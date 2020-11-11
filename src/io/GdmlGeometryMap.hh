@@ -47,7 +47,15 @@ class GdmlGeometryMap
     // Find ImportElement given element id
     const ImportElement& get_element(elem_id element_id) const;
 
-    // Return a reference to the private member volid_to_matid_ map
+    // Return the size of the largest material element list
+    size_type sizeof_largest_material_element_list() const;
+    // Return a reference to matid_to_material map
+    const std::map<mat_id, ImportMaterial>& matid_to_material_map();
+    // Return a reference to volid_to_volume_ map
+    const std::map<vol_id, ImportVolume>& volid_to_volume_map();
+    // Return a reference to elemid_to_element_ map
+    const std::map<elem_id, ImportElement>& elemid_to_element_map();
+    // Return a reference to volid_to_matid_ map
     const std::map<vol_id, mat_id>& volid_to_matid_map();
 
     /// WRITE (only used by geant-exporter app) ///

@@ -30,8 +30,11 @@ const std::string& MaterialParams::id_to_label(MaterialDefId mat) const
 
 //---------------------------------------------------------------------------//
 /*!
- * Find the material ID corresponding to a name.
+ * Find the material ID corresponding to a name. 
+ * Disabled. Different id's may still point to same material (we can have Air 
+ * with 3 different ids, each with slightly different fractions and properties)
  */
+/*
 MaterialDefId MaterialParams::find(const std::string& name) const
 {
     auto iter = matname_to_id_.find(name);
@@ -39,6 +42,6 @@ MaterialDefId MaterialParams::find(const std::string& name) const
         return {};
     return iter->second;
 }
-
+*/
 //---------------------------------------------------------------------------//
 } // namespace celeritas

@@ -85,12 +85,12 @@ class MaterialParams
 
     std::vector<std::string>                       elnames_;
     std::vector<std::string>                       matnames_;
-    std::unordered_map<std::string, MaterialDefId> matname_to_id_;
+    //std::unordered_map<std::string, MaterialDefId> matname_to_id_;
 
     // HELPER FUNCTIONS
-    void                      append_element_def(const ElementInput& el);
-    span<MatElementComponent> extend_elcomponents(const MaterialInput& el);
-    void                      append_material_def(const MaterialInput& el);
+    void                      append_element_def(const ElementInput& inp);
+    span<MatElementComponent> extend_elcomponents(const MaterialInput& inp);
+    void                      append_material_def(const MaterialInput& inp);
 };
 
 //---------------------------------------------------------------------------//

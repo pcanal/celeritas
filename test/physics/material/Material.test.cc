@@ -122,7 +122,7 @@ class MaterialTest : public celeritas::Test
 };
 
 //---------------------------------------------------------------------------//
-
+/*
 TEST_F(MaterialTest, params)
 {
     ASSERT_TRUE(params);
@@ -140,7 +140,7 @@ TEST_F(MaterialTest, params)
     EXPECT_EQ("hard vacuum", params->id_to_label(MaterialDefId{1}));
     EXPECT_EQ("H2", params->id_to_label(MaterialDefId{2}));
 }
-
+*/
 TEST_F(MaterialTest, material_view)
 {
     auto host_ptrs = params->host_pointers();

@@ -17,6 +17,7 @@
 #include "GdmlGeometryMap.hh"
 #include "physics/base/ParticleParams.hh"
 #include "physics/base/ParticleDef.hh"
+#include "physics/material/MaterialParams.hh"
 #include "base/Types.hh"
 #include "base/Macros.hh"
 
@@ -54,8 +55,8 @@ class RootImporter
     {
         std::shared_ptr<ParticleParams>                  particle_params;
         std::shared_ptr<std::vector<ImportPhysicsTable>> physics_tables;
-        // Incomplete. It will store an object similar to ParticleParams
-        std::shared_ptr<GdmlGeometryMap> geometry;
+        std::shared_ptr<GdmlGeometryMap>                 geometry;
+        std::shared_ptr<MaterialParams>                  material_params;
     };
 
   public:
@@ -75,6 +76,10 @@ class RootImporter
     std::shared_ptr<std::vector<ImportPhysicsTable>> load_physics_table_data();
     // Load GdmlGeometryMap object
     std::shared_ptr<GdmlGeometryMap> load_geometry_data();
+    // Populate the shared_ptr<MaterialParams> with material information
+    std::shared_ptr<MaterialParams> load_material_data();
+    // Safely switch between state enums
+    MatterState to_matter_state(const ImportMaterialState state); 
 
   public:
     std::unique_ptr<TFile> root_input_;
