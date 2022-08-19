@@ -363,7 +363,6 @@ celeritas_add_test(celeritas/random/distribution/UniformRealDistribution.test.cc
 if(CELERITAS_USE_CUDA)
   celeritas_add_test(celeritas/random/curand/CurandPerformance.test.cc GPU
     SOURCES celeritas/random/curand/CurandPerformance.test.cu
-    LINK_LIBRARIES CUDA::cudart
     ${_disable_if_debug}
   )
 endif()
