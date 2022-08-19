@@ -299,6 +299,10 @@ celeritas_target_include_directories(celeritas
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
+if(CELERITAS_USE_CUDA)
+  target_include_directories(celeritas SYSTEM PUBLIC ${CUDAToolkit_INCLUDE_DIR})
+endif()
+
 if(CELERITAS_USE_HIP)
   # This is a hacky workaround for not having the equivalent of CUDAToolkit: it
   # works on Crusher as of ROCm 5.1.0
