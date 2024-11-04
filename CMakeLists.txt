@@ -334,7 +334,7 @@ if(CELERITAS_USE_Geant4 AND NOT Geant4_FOUND)
       else()
         message(STATUS "Value for ${Geant4_DATASET_${_ds}_ENVVAR} taken from the environment rather than the Geant4 cmake fragment")
         list(APPEND _CELER_G4ENV
-           "${Geant4_DATASET_${_ds}_ENVVAR}=$ENV{${Geant4_DATASET_${_ds}_ENVVAR}}}"
+           "${Geant4_DATASET_${_ds}_ENVVAR}=$ENV{${Geant4_DATASET_${_ds}_ENVVAR}}"
         )
       endif()
     endforeach()
