@@ -2523,8 +2523,21 @@ TEST_F(TetTest, standard)
     EXPECT_REF_EQ(ref, result);
 
     // Test senses
+    // clang-format off
     EXPECT_EQ(SignedSense::inside,
               this->calc_sense(result.node_id, Real3{0, 0, 0}));
+    // a second time
+    EXPECT_EQ(SignedSense::inside,
+              this->calc_sense(result.node_id, Real3{0, 0, 0}));
+    // with float
+    EXPECT_EQ(SignedSense::inside,
+              this->calc_sense(result.node_id, Real3{0.0, 0.0, 0.0}));
+    // on one line
+    EXPECT_EQ(SignedSense::inside, this->calc_sense(result.node_id, Real3{0, 0, 0}));
+    EXPECT_EQ(SignedSense::inside,
+              this->calc_sense(result.node_id, Real3{0, 0, 0.1}));
+    // clang-format on
+
     for (auto i : range(4))
     {
         EXPECT_EQ(SignedSense::on,
