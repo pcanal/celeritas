@@ -2536,6 +2536,21 @@ TEST_F(TetTest, standard)
     EXPECT_EQ(SignedSense::inside, this->calc_sense(result.node_id, Real3{0, 0, 0}));
     EXPECT_EQ(SignedSense::inside,
               this->calc_sense(result.node_id, Real3{0, 0, 0.1}));
+
+
+   switch (0) case 0: default: if (const ::testing::AssertionResult gtest_ar = (::testing::internal::EqHelper::Compare(
+   "SignedSense::outside"
+   ,
+   "this->calc_sense(result.node_id, Real3{0, 0, 0})"
+   ,
+   SignedSense::outside
+   ,
+   this->calc_sense(result.node_id, Real3{0, 0, 0})
+   ))) ; else ::testing::internal::AssertHelper(::testing::TestPartResult::kNonFatalFailure, "/home/pcanal/geant/sources/celeritas/test/orange/orangeinp/IntersectRegion.test.cc", 200
+, gtest_ar.failure_message()) = ::testing::Message()
+
+                                                               ;
+
     // clang-format on
 
     for (auto i : range(4))
