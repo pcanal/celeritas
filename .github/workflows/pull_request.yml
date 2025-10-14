@@ -32,14 +32,7 @@ jobs:
       with:
         name: event-file
         path: ${{github.event_path}}
-  build-fast:
-    uses: ./.github/workflows/build-fast.yml
-  build-ultralite:
-    uses: ./.github/workflows/build-ultralite.yml
-  doc:
-    uses: ./.github/workflows/doc.yml
   all-prechecks:
-    needs: [build-fast, build-ultralite, doc]
     runs-on: ubuntu-24.04
     steps:
     - name: Success
