@@ -6,6 +6,8 @@
 //---------------------------------------------------------------------------//
 #include "Runner.hh"
 
+#include <fstream>
+
 #include "corecel/Config.hh"
 
 #include "corecel/io/StringUtils.hh"
@@ -50,6 +52,13 @@ Runner::Runner(ModelSetup const& input)
         CELER_EXPECT(celeritas::global_geant_geo().expired());
         this->load_geometry<Geometry::geant4>();
         CELER_EXPECT(!celeritas::global_geant_geo().expired());
+    }
+    else
+    {
+        // GCOVR_EXCL_BR_SOURCE
+        CELER_VALIDATE(std::ifstream{input_.geometry_file}.is_open(),
+                       << "input model filename '" << input_.geometry_file
+                       << "' does not exist");
     }
 }
 
