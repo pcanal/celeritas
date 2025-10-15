@@ -2524,7 +2524,7 @@ TEST_F(TetTest, standard)
 
     // Test senses
     // clang-format off
-    int my_own_marker = 0; // To find in the .E file
+    [[maybe_unused]] int my_own_marker = 0; // To find in the .E file
     EXPECT_EQ(SignedSense::inside,
               this->calc_sense(result.node_id, Real3{0, 0, 0}));
     // a second time
