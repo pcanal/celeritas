@@ -2540,15 +2540,16 @@ TEST_F(TetTest, standard)
 
 
    switch (0) case 0: default: if (const ::testing::AssertionResult gtest_ar = (::testing::internal::EqHelper::Compare(
-   "SignedSense::outside"
+   "SignedSense::inside"
    ,
-   "this->calc_sense(result.node_id, Real3{0, 0, 0})"
+   "Manually added this->calc_sense(result.node_id, Real3{0, 0, 0})"
    ,
-   SignedSense::outside
+   SignedSense::inside
    ,
    this->calc_sense(result.node_id, Real3{0, 0, 0})
-   ))) ; else ::testing::internal::AssertHelper(::testing::TestPartResult::kNonFatalFailure, "/home/pcanal/geant/sources/celeritas/test/orange/orangeinp/IntersectRegion.test.cc", 200
-, gtest_ar.failure_message()) = ::testing::Message()
+   ))) ; else ::testing::internal::AssertHelper(::testing::TestPartResult::kNonFatalFailure, "/home/pcanal/geant/sources/celeritas/test/orange/orangeinp/IntersectRegion.test.cc",
+      2549
+     , gtest_ar.failure_message()) = ::testing::Message()
 
                                                                ;
 
