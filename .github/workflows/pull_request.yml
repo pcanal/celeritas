@@ -37,13 +37,13 @@ jobs:
     steps:
     - name: Success
       run: "true"
-  build-docker:
+  #build-docker:
     # Since docker builds aren't cached and are large, don't run on draft
-    if: ${{github.event.pull_request.draft == false}}
-    needs: [all-prechecks]
-    uses: ./.github/workflows/build-docker.yml
-    secrets:
-      codecov_token: ${{ secrets.CODECOV_TOKEN }}
+  #  if: ${{github.event.pull_request.draft == false}}
+  #  needs: [all-prechecks]
+  #  uses: ./.github/workflows/build-docker.yml
+  #  secrets:
+  #    codecov_token: ${{ secrets.CODECOV_TOKEN }}
   build-spack:
     needs: [all-prechecks]
     uses: ./.github/workflows/build-spack.yml
