@@ -53,7 +53,7 @@ runs:
       shell: sh
       working-directory: ${{inputs.working_directory}}
       run: |
-        gcovr \
+        gcovr --verbose \
           --config=${{inputs.gcovr_config}} \
           --gcov-executable=${{inputs.gcov_executable}} \
           -j $(($(nproc) + 1)) \
