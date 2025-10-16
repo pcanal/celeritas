@@ -59,15 +59,15 @@ runs:
           -j $(($(nproc) + 1)) \
           --output=cobertura-cov.xml --cobertura-pretty \
           --merge-mode-functions=merge-use-line-min
-        grep filename cobertura-cov.xml
+        grep filename cobertura-cov.xml | grep test
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7 # v5.5.1
       with:
         token: ${{inputs.codecov_token }}
         fail_ci_if_error: ${{inputs.fail_ci_if_error}}
-        files: ${{inputs.working_directory}}/cobertura-cov.xml
-        disable_search: false
+        files: ${{inputs.working_directory}}/cobertura-cov-crap.xml
+        disable_search: true
         name: ${{inputs.codecov_name}}
         verbose: true
-        gcov_executable: ${{inputs.gcov_executable}}
+        #gcov_executable: ${{inputs.gcov_executable}}
