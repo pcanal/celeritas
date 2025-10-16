@@ -59,7 +59,7 @@ runs:
           -j $(($(nproc) + 1)) \
           --output=cobertura-cov.xml --cobertura-pretty \
           --merge-mode-functions=merge-use-line-min
-        grep filename cobertura-cov.xml | grep test
+        grep filename cobertura-cov.xml | grep test || true
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7 # v5.5.1
