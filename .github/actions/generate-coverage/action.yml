@@ -67,7 +67,7 @@ runs:
         token: ${{inputs.codecov_token }}
         fail_ci_if_error: ${{inputs.fail_ci_if_error}}
         files: ${{inputs.working_directory}}/cobertura-cov.xml
-        disable_search: true
+        disable_search: false
         name: ${{inputs.codecov_name}}
         verbose: true
         gcov_executable: ${{inputs.gcov_executable}}
