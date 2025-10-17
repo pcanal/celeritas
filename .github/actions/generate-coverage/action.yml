@@ -69,3 +69,4 @@ runs:
         files: ${{inputs.working_directory}}/cobertura-cov.xml
         verbose: true
         gcov_executable: ${{inputs.gcov_executable}}
+        gcov_args: --config=${{inputs.gcovr_config}}
