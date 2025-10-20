@@ -34,7 +34,7 @@ comment:
 
 ignore:
   - "test"
-# - "app/**/*"
+  - "app/**/*"
   - "doc/**/*"
   - "docs/**/*"
   - "*.md"
