@@ -69,4 +69,5 @@ runs:
         # disable_search: true
         name: ${{inputs.codecov_name}}
         verbose: true
-        #gcov_executable: ${{inputs.gcov_executable}}
+        gcov_executable: ${{inputs.gcov_executable}}
+        gcov_args: --config=${{inputs.gcovr_config}}
