@@ -53,6 +53,7 @@ runs:
       shell: sh
       working-directory: ${{inputs.working_directory}}
       run: |
+        echo Number of processors is $(nproc) vs $(( $(nproc) + 1 )) for gcovr
         gcovr \
           --config=${{inputs.gcovr_config}} \
           --gcov-executable=${{inputs.gcov_executable}} \
