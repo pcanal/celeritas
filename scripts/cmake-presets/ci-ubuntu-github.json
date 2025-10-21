@@ -160,6 +160,14 @@
       "inherits": ["type-reldeb", ".vecgeom", ".gcov", "spack"]
     },
     {
+      "name": "debug-vecgeom-codecov",
+      "description": "FINAL: VecGeom and code coverage",
+      "inherits": ["type-reldeb", ".vecgeom", ".gcov", "spack"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": {"type": "STRING", "value": "Release"}
+      }
+    },
+    {
       "name": "reldeb-vgsurf",
       "description": "FINAL: release, assertions, VecGeom 2+surf",
       "inherits": ["type-reldeb", ".vecgeom", "spack"]

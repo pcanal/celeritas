@@ -40,7 +40,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - build_type: "reldeb"
+          - build_type: "debug"
             geometry: "vecgeom"
             special: "codecov"
             geant: "11.3"
