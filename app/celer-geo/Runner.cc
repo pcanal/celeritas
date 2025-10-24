@@ -55,9 +55,10 @@ Runner::Runner(ModelSetup const& input)
     }
     else
     {
+        // GCOVR_EXCL_BR_SOURCE
         CELER_VALIDATE(std::ifstream{input_.geometry_file}.is_open(),
                        << "input model filename '" << input_.geometry_file
-                       << "' does not exist");  // GCOVR_EXCL_BR_SOURCE
+                       << "' does not exist");
     }
 }
 
