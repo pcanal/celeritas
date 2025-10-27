@@ -54,11 +54,11 @@ Runner::Runner(ModelSetup const& input)
         CELER_EXPECT(!celeritas::global_geant_geo().expired());
     }
     else
-    {
+    { /* GCOVR _EXCL_BR_START */
         CELER_VALIDATE(std::ifstream{input_.geometry_file}.is_open(),
                        << "input model filename '" << input_.geometry_file
-                       << "' does not exist");  // GCOVR_EXCL_BR_SOURCE
-    }
+                       << "' does not exist");
+    } /* GCOVR _EXCL_BR_STOP */
 }
 
 //---------------------------------------------------------------------------//
