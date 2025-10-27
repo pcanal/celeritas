@@ -282,7 +282,7 @@ jobs:
           retention-days: 1
       - name: Generate and upload coverage report
         uses: ./.github/actions/generate-coverage
-        continue-on-error: true
+        # continue-on-error: true
         if: >-
           ${{
             matrix.special == 'codecov'
