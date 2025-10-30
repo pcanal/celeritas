@@ -55,6 +55,8 @@ runs:
       run: |
         echo "Starting gcovr coverage report generation..."
 
+        ls -lart `find . -name '*.gcno'`
+
         # Run gcovr and capture output to check for errors
         gcovr_output=$(gcovr \
           --config=${{inputs.gcovr_config}} \
