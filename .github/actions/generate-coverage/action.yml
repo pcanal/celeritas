@@ -53,6 +53,7 @@ runs:
       shell: sh
       working-directory: ${{inputs.working_directory}}
       run: |
+        echo Number of processors is $(nproc) vs $(( $(nproc) + 1 )) for gcovr
         gcovr \
           --config=${{inputs.gcovr_config}} \
           --gcov-executable=${{inputs.gcov_executable}} \
@@ -65,7 +66,10 @@ runs:
       with:
         token: ${{inputs.codecov_token }}
         fail_ci_if_error: ${{inputs.fail_ci_if_error}}
+        files: ${{inputs.working_directory}}/cobertura-cov.xml
+        # disable_search: true
         name: ${{inputs.codecov_name}}
         files: ${{inputs.working_directory}}/cobertura-cov.xml
         verbose: true
         gcov_executable: ${{inputs.gcov_executable}}
+        gcov_args: --config=${{inputs.gcovr_config}}
