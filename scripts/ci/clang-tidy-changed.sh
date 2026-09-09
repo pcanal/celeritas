@@ -35,7 +35,7 @@ git fetch --depth 1 "${REMOTE}" "${BASE_SHA}"
 # NOTE: this only compares source/app code files that have changed, and does
 # not process changes to headers.
 ALL_FILES=$(git diff --name-only --diff-filter=ACM "$BASE_SHA"..."$HEAD_SHA")
-CC_FILES=$(grep -E '^(src|app)/.*\.cc$' - <<< "$ALL_FILES") || {
+CC_FILES=$(grep -E '^(src|app|test)/.*\.cc$' - <<< "$ALL_FILES") || {
   log info "No *.cc files have changed."
   exit 0
 }
