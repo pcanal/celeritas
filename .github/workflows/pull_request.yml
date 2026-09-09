@@ -45,14 +45,19 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  # TEMP(tidy-only): revert this commit to restore normal PR CI
   build-fast:
+    if: false
     uses: ./.github/workflows/build-fast.yml
   build-ultralite:
+    if: false
     uses: ./.github/workflows/build-ultralite.yml
   build-docs:
+    if: false
     uses: ./.github/workflows/build-docs.yml
   all-prechecks:
     # This job will skip if any dependent skips
+    if: false # TEMP(tidy-only)
     needs:
       - build-fast
       - build-ultralite
@@ -63,6 +68,7 @@ jobs:
         run: "true"
 
   build-spack:
+    if: false # TEMP(tidy-only)
     needs: [all-prechecks]
     uses: ./.github/workflows/build-spack.yml
   build-spack-extra:
@@ -71,15 +77,15 @@ jobs:
 
   # Defer large jobs while the PR is in draft state
   build-regression:
-    if: ${{github.event.pull_request.draft == false}}
+    if: false # TEMP(tidy-only)
     needs: [all-prechecks]
     uses: ./.github/workflows/build-regression.yml
   build-docker:
-    if: ${{github.event.pull_request.draft == false}}
+    if: false # TEMP(tidy-only)
     needs: [all-prechecks]
     uses: ./.github/workflows/build-docker.yml
   build-codecov:
-    if: ${{github.event.pull_request.draft == false}}
+    if: false # TEMP(tidy-only)
     needs: [all-prechecks]
     uses: ./.github/workflows/build-codecov.yml
 
