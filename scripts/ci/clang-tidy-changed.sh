@@ -51,6 +51,7 @@ COMPILED_CC_FILES=$(sort <(echo "$CC_FILES") <(echo "$COMPILED_FILES") | uniq -d
 #    echo "$file"
 #  fi
 #done)
+COMPILED_CC_FILES=src/orange/surf/PlaneAligned.cc
 if [ -z "$COMPILED_CC_FILES" ]; then
   log info "No files to run clang-tidy on."
   exit 0
