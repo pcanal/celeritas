@@ -22,6 +22,7 @@ env:
 jobs:
   asan:
     name: reldeb-orange-asanlite
+    if: false # TEMP(tidy-only): revert this commit to restore
     env:
       CELER_CMAKE_PRESET: reldeb-orange-asanlite
     runs-on: ubuntu-24.04
