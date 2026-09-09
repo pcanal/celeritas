@@ -56,4 +56,5 @@ if [ -z "$CC_FILES" ]; then
   exit 0
 fi
 log info "Running clang-tidy on: $CC_FILES"
-$CLANG_TIDY -p $BUILD_DIR $CC_FILES
+echo $CLANG_TIDY
+run-clang-tidy -p $BUILD_DIR $CC_FILES
