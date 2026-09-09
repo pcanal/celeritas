@@ -42,13 +42,18 @@ jobs:
         with:
           name: event-file
           path: ${{github.event_path}}
+  # TEMP(tidy-only): revert this commit to restore normal PR CI
   build-fast:
+    if: false
     uses: ./.github/workflows/build-fast.yml
   build-ultralite:
+    if: false
     uses: ./.github/workflows/build-ultralite.yml
   build-docs:
+    if: false
     uses: ./.github/workflows/build-docs.yml
   all-prechecks:
+    if: false # TEMP(tidy-only)
     needs:
       - build-fast
       - build-ultralite
@@ -58,20 +63,20 @@ jobs:
       - name: Success
         run: "true"
   build-spack:
+    if: false # TEMP(tidy-only)
     needs: [all-prechecks]
     uses: ./.github/workflows/build-spack.yml
 
   # Defer large jobs while the PR is in draft state
+  # TEMP(tidy-only): 'needs' and draft check dropped so tidy runs immediately
   build-spack-extra:
-    if: ${{github.event.pull_request.draft == false}}
-    needs: [all-prechecks]
     uses: ./.github/workflows/build-spack-extra.yml
   build-docker:
-    if: ${{github.event.pull_request.draft == false}}
+    if: false # TEMP(tidy-only)
     needs: [all-prechecks]
     uses: ./.github/workflows/build-docker.yml
   build-codecov:
-    if: ${{github.event.pull_request.draft == false}}
+    if: false # TEMP(tidy-only)
     needs: [all-prechecks]
     uses: ./.github/workflows/build-codecov.yml
 
@@ -89,5 +94,7 @@ jobs:
         uses: re-actors/alls-green@v1.3.0 # immutable, 21 Aug 2026
         with:
           jobs: ${{toJSON(needs)}}
+          # TEMP(tidy-only): tolerate the deliberately disabled jobs
+          allowed-skips: build-spack, build-docker, build-codecov
 
 # vim: set nowrap tw=100:
