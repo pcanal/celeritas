@@ -35,7 +35,8 @@ git fetch --depth 1 "${REMOTE}" "${BASE_SHA}"
 # NOTE: this only compares source/app code files that have changed, and does
 # not process changes to headers.
 ALL_FILES=$(git diff --name-only --diff-filter=ACM "$BASE_SHA"..."$HEAD_SHA")
-CC_FILES=$(grep -E '^(src|app)/.*\.cc$' - <<< "$ALL_FILES") || {
+ALL_FILES=$(find . -type f -name '*.cc' -o -name '*.hh' | sed 's|^\./||' | sort | uniq)
+CC_FILES=$(grep -E '^(src|app|test)/.*\.cc$' - <<< "$ALL_FILES") || {
   log info "No *.cc files have changed."
   exit 0
 }
@@ -44,14 +45,19 @@ CC_FILES=$(grep -E '^(src|app)/.*\.cc$' - <<< "$ALL_FILES") || {
 # (NOTE: this is O(N^2) for large commits: maybe this script should use python
 # and also fix the fact that .hh files are not checked)
 COMPILED_FILES=$(jq -r '.[].file' "$BUILD_DIR/compile_commands.json")
-CC_FILES=$(echo "$CC_FILES" | while read -r file; do
-  if echo "$COMPILED_FILES" | grep -qE "^.*/${file}$"; then
-    echo "$file"
-  fi
-done)
-if [ -z "$CC_FILES" ]; then
+COMPILED_CC_FILES=$(sort <(echo "$CC_FILES") <(echo "$COMPILED_FILES") | uniq -d)
+#CC_FILES=$(echo "$CC_FILES" | while read -r file; do
+#  if echo "$COMPILED_FILES" | grep -qE "^.*/${file}$"; then
+#    echo "$file"
+#  fi
+#done)
+COMPILED_CC_FILES=src/orange/surf/PlaneAligned.cc
+if [ -z "$COMPILED_CC_FILES" ]; then
   log info "No files to run clang-tidy on."
   exit 0
 fi
-log info "Running clang-tidy on: $CC_FILES"
-$CLANG_TIDY -p $BUILD_DIR $CC_FILES
+log info "Running clang-tidy on: $COMPILED_CC_FILES"
+log info "Using clang-tidy: $CLANG_TIDY"
+log info "Using command line: run-clang-tidy -p $BUILD_DIR \$COMPILED_CC_FILES"
+echo $CLANG_TIDY
+run-clang-tidy -p $BUILD_DIR $COMPILED_CC_FILES
