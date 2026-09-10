@@ -1,12 +1,10 @@
-#!/bin/bash
+#!/bin/sh
 #-------------------------------- -*- sh -*- ---------------------------------#
 # Copyright Celeritas contributors: see top-level COPYRIGHT file for details
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 #-----------------------------------------------------------------------------#
-# TODO: replace this script with something that parses header dependencies
-# with clang and determines what .cc files must be compiled to test *all*
-# the changes, including to headers, in the src/ and app/ directories.
-# (Currently the files in test/ have too many issues.)
+# Run clang-tidy only on changed C++ files and report diagnostics on changed
+# lines.
 #-----------------------------------------------------------------------------#
 
 set -e
@@ -20,7 +18,7 @@ BASE_SHA="$2"
 HEAD_SHA="HEAD"
 
 if [ $# -ne 2 ]; then
-  log usage "CLANG_TIDY=path $0 remote base_sha"
+  log usage "CLANG_TIDY=path CLANG_TIDY_DIFF=otherpath $0 remote base_sha"
   exit 1
 fi
 
@@ -29,29 +27,87 @@ if [ -z "$CLANG_TIDY" ]; then
   exit 1
 fi
 
+if [ -z "$CLANG_TIDY_DIFF" ]; then
+  log error "CLANG_TIDY_DIFF not defined"
+  exit 1
+fi
+
+if [ ! -f "$CLANG_TIDY_DIFF" ]; then
+  log error "clang-tidy-diff.py not found: $CLANG_TIDY_DIFF"
+  exit 1
+fi
+
 log info "Fetching base commit ${BASE_SHA} from ${REMOTE}"
 git fetch --depth 1 "${REMOTE}" "${BASE_SHA}"
 
-# NOTE: this only compares source/app code files that have changed, and does
-# not process changes to headers.
-ALL_FILES=$(git diff --name-only --diff-filter=ACM "$BASE_SHA"..."$HEAD_SHA")
-CC_FILES=$(grep -E '^(src|app)/.*\.cc$' - <<< "$ALL_FILES") || {
-  log info "No *.cc files have changed."
-  exit 0
-}
+log info "Using clang-tidy: $CLANG_TIDY"
+# TODO: Remove the warning ignore when upgrading to LLVM 20 or newer, whose driver has
+# invalid escapes.
+diff_file=$(mktemp)
+tidy_status_file=$(mktemp)
+trap 'rm -f "$diff_file" "$tidy_status_file"' 0
 
-# Get list of files from compile_commands.json and filter CC_FILES
-# (NOTE: this is O(N^2) for large commits: maybe this script should use python
-# and also fix the fact that .hh files are not checked)
-COMPILED_FILES=$(jq -r '.[].file' "$BUILD_DIR/compile_commands.json")
-CC_FILES=$(echo "$CC_FILES" | while read -r file; do
-  if echo "$COMPILED_FILES" | grep -qE "^.*/${file}$"; then
-    echo "$file"
+git diff --diff-filter=ACM -U0 "$BASE_SHA"..."$HEAD_SHA" > "$diff_file"
+
+if grep -qE '^\+\+\+ b/(src|app|test)/.*\.hh$' "$diff_file"; then
+  log info "Header changed: running clang-tidy on all compiled sources"
+  (
+    set +e
+    run-clang-tidy -clang-tidy-binary "$CLANG_TIDY" -p "$BUILD_DIR" 2>&1
+    tidy_status=$?
+    printf '%s\n' "$tidy_status" > "$tidy_status_file"
+  ) | awk '
+    function escape_annotation(value) {
+      gsub(/%/, "%25", value)
+      gsub(/\r/, "%0D", value)
+      gsub(/\n/, "%0A", value)
+      return value
+    }
+
+    /^[0-9]+ warnings generated\.$/ {
+      generated[$1] = 1
+      next
+    }
+
+    /^Suppressed [0-9]+ warnings \([0-9]+ in / {
+      split($0, fields, " ")
+      generated_count = fields[4]
+      sub(/^\(/, "", generated_count)
+      if (generated[generated_count]) {
+        delete generated[generated_count]
+        sub(/^Suppressed /, generated_count " warnings generated; ")
+        sub(/ warnings \(/, " suppressed (", $0)
+      }
+      print
+      next
+    }
+
+    /^Use -header-filter=\.\* to display errors from all non-system headers\./ {
+      next
+    }
+
+    {
+      print
+    }
+
+    /^[^:]+:[0-9]+:[0-9]+: error: / {
+      split($0, diagnostic, ":")
+      message = $0
+      sub(/^[^:]+:[0-9]+:[0-9]+: error: /, "", message)
+      print "========== CLANG-TIDY ERROR =========="
+      print "::error file=" diagnostic[1] ",line=" diagnostic[2] ",col=" diagnostic[3] "::" escape_annotation(message)
+      print "======================================="
+    }
+  '
+  tidy_status=$(cat "$tidy_status_file")
+  if [ "$tidy_status" -ne 0 ]; then
+    exit "$tidy_status"
   fi
-done)
-if [ -z "$CC_FILES" ]; then
-  log info "No files to run clang-tidy on."
-  exit 0
+else
+  python3 -W ignore::SyntaxWarning "$CLANG_TIDY_DIFF" \
+    -clang-tidy-binary "$CLANG_TIDY" \
+    -p 1 \
+    -path "$BUILD_DIR" \
+    -regex '^(src|app|test)/.*\.cc$' \
+    < "$diff_file"
 fi
-log info "Running clang-tidy on: $CC_FILES"
-$CLANG_TIDY -p $BUILD_DIR $CC_FILES
