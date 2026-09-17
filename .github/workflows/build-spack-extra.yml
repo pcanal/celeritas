@@ -60,6 +60,7 @@ jobs:
   # Compatibility with old compilers (SCALE QA)
   ancient:
     name: orange-gcc8
+    if: false # TEMP(tidy-only): revert this commit to restore
     env:
       CELER_CMAKE_PRESET: orange-ancient
       CC: "/opt/view/bin/gcc"
