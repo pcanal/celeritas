@@ -72,7 +72,6 @@ jobs:
     needs: [all-prechecks]
     uses: ./.github/workflows/build-spack.yml
   build-spack-extra:
-    needs: [all-prechecks]
     uses: ./.github/workflows/build-spack-extra.yml
 
   # Defer large jobs while the PR is in draft state
@@ -122,10 +121,17 @@ jobs:
         with:
           script: |
             const needs = JSON.parse(process.env.NEEDS);
+            const allowedSkips = [
+              'all-prechecks',
+              'build-spack',
+              'all-expensive',
+            ];
             core.debug(`needs: ${JSON.stringify(needs)}`);
 
             const unsuccessful = Object.entries(needs)
-              .filter(([, job]) => job.result !== 'success')
+              .filter(([name, job]) =>
+                job.result !== 'success'
+                && !(job.result === 'skipped' && allowedSkips.includes(name)))
               .map(([name]) => name);
 
             core.setOutput('unsuccessful', unsuccessful.join(','));
