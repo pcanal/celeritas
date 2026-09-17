@@ -34,6 +34,13 @@ When emitting `::error` or `::warning` workflow commands, use paths relative
 to the repository root in the `file=` property. Escape `%`, CR, LF, `:`, and
 `,` in property values so annotations link to the source location in PR views.
 
+### Temporarily skipped CI jobs
+
+When intentionally disabling jobs with `if: false`, update every aggregate
+workflow gate that consumes their result. In particular, add the skipped job
+names to the gate's allowed-skips list before committing; otherwise the gate
+will fail because GitHub reports those jobs as `skipped` rather than `success`.
+
 ### Header clang-tidy checks
 
 Before passing changed headers to `clang-tidy-diff.py`, map each header to
