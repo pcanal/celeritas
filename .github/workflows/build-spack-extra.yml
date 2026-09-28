@@ -125,6 +125,8 @@ jobs:
         with:
           preset: ${{env.CELER_CMAKE_PRESET}}
           presets-file: "ci-ubuntu-github.json"
+      - name: Generate ROOT dictionary for dependency scan
+        run: ninja -C build src/celeritas/CeleritasRootInterface.cxx
       - name: Build changed files with clang-tidy
         if: ${{github.event_name == 'pull_request'}}
         run: |
