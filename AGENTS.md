@@ -34,14 +34,6 @@ In its `experimental-full` JSON, read `input-file` and `file-deps` from each
 entry in `translation-units[].commands`; they are not translation-unit-level
 fields.
 
-### Generated sources in CI tooling
-
-When a CI tool fails because a generated source is unavailable, inspect the
-generator/target lifecycle and make the tool handle generated sources (or build
-the required generation target) before disabling the feature that produces
-them. Preserve the configured feature coverage unless the user explicitly
-requests reducing it.
-
 ### GitHub Actions annotations
 
 When emitting `::error` or `::warning` workflow commands, use paths relative
