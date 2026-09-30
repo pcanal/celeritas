@@ -24,8 +24,11 @@
  * Decorate a function that works on both host and device, with and without
  * CUDA (NVCC or Clang) and HIP compilers. The name of this function and its
  * siblings is based on the Kokkos naming scheme.
+ *
+ * NVCC defines both \c __NVCC__ and \c __CUDACC__ when compiling CUDA
+ * sources, whereas Clang compiling CUDA code defines only \c __CUDACC__ .
  */
-#if defined(__CUDACC__) || defined(__HIP__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIP__)
 #    define CELER_FUNCTION __host__ __device__
 #else
 #    define CELER_FUNCTION
