@@ -74,9 +74,6 @@ translation units that include it and run clang-tidy using those translation
 units' compilation database commands. Do not invoke clang-tidy directly on a
 header, since headers are not compilation database entries and lack the target
 include paths and preprocessor definitions.
-When CUDA is enabled, inspect the compilation database before passing it to
-`clang-scan-deps`: exclude `nvcc` commands and do not select those translation
-units for clang-tidy, since LLVM's scanner cannot parse nvcc-only flags.
 
 ### After any completed task — commit
 Commit immediately when all todos are done. Do not wait to be told. Do not defer across turns. Do not batch documentation changes.
