@@ -5,6 +5,7 @@
 
 import argparse
 import json
+import os
 import re
 import shlex
 import subprocess
@@ -75,7 +76,7 @@ def select_sources(
     changed_sources = {source for source in changed_sources if selectable(source)}
     data = json.loads(dependency_file.read_text())
     affected_sources: set[Path] = set()
-    source_by_header: dict[Path, Path] = {}
+    source_by_header: dict[tuple[Path, bool], Path] = {}
 
     commands = (
         command
@@ -100,10 +101,10 @@ def select_sources(
             affected_sources.add(source_path)
         elif header_source_selection is SourceSelection.ONE:
             for header in matching_headers:
-                # If multiple sources depend on the same header,
-                # pick the one with the lexicographically smallest path.
-                source_by_header[header] = min(
-                    source_path, source_by_header.get(header, source_path)
+                # Check both host and CUDA contexts for each changed header.
+                key = (header, source_path.suffix == ".cu")
+                source_by_header[key] = min(
+                    source_path, source_by_header.get(key, source_path)
                 )
 
     if header_source_selection is SourceSelection.ONE:
@@ -250,7 +251,7 @@ def scannable_commands(compilation_database: list[dict], build_dir: Path) -> lis
         command = entry.get("arguments")
         if command is None:
             command = shlex.split(entry.get("command", ""))
-        if any(Path(arg).name == "nvcc" for arg in command):
+        if command and Path(command[0]).name == "nvcc":
             log(
                 LogLevel.NOTICE,
                 f"Skipping nvcc dependency-scan source: {compilation_source(entry, build_dir)}",
@@ -258,6 +259,103 @@ def scannable_commands(compilation_database: list[dict], build_dir: Path) -> lis
             continue
         result.append(entry)
     return result
+
+
+def clang_cuda_command(entry: dict, clang_tidy: str) -> dict:
+    """Translate a CMake nvcc compilation entry for Clang's CUDA frontend."""
+    args = entry.get("arguments")
+    if args is None:
+        args = shlex.split(entry["command"])
+    if not args or Path(args[0]).name != "nvcc":
+        return entry
+
+    # Clang parses CUDA directly; nvcc's driver, linker, and device-compiler
+    # flags must not be passed through to clang-scan-deps or clang-tidy.
+    tidy = Path(clang_tidy)
+    if not tidy.name.startswith("clang-tidy"):
+        raise RuntimeError(f"Cannot derive CUDA compiler from {clang_tidy!r}")
+    compiler = tidy.with_name(tidy.name.replace("clang-tidy", "clang++", 1))
+    translated = [
+        str(compiler),
+        "-x",
+        "cuda",
+        "-nocudalib",
+        "-Wno-unknown-cuda-version",
+    ]
+    cuda_path = os.environ.get("CUDA_PATH")
+    if not cuda_path and Path(args[0]).is_absolute():
+        cuda_path = str(Path(args[0]).parent.parent)
+    if not cuda_path:
+        raise RuntimeError("CUDA_PATH is needed to parse nvcc compilation commands")
+    translated.append(f"--cuda-path={cuda_path}")
+    skip_value = {"-Xnvlink", "-Xptxas", "-Xcudafe", "-gencode", "--generate-code"}
+    drop = {
+        "-forward-unknown-to-host-compiler",
+        "--suppress-stack-size-warning",
+        "--expt-relaxed-constexpr",
+        "--expt-extended-lambda",
+    }
+    i = 1
+    while i < len(args):
+        arg = args[i]
+        if arg in ("-rdc=true", "--relocatable-device-code=true"):
+            translated.append("-fgpu-rdc")
+            i += 1
+            continue
+        if arg.startswith(("--generate-code=", "-gencode=")):
+            if match := re.search(r"arch=compute_(\d+)", arg):
+                arch = f"--cuda-gpu-arch=sm_{match.group(1)}"
+                if arch not in translated:
+                    translated.append(arch)
+            i += 1
+            continue
+        if arg in skip_value:
+            if arg in ("-gencode", "--generate-code"):
+                if match := re.search(r"arch=compute_(\d+)", args[i + 1]):
+                    arch = f"--cuda-gpu-arch=sm_{match.group(1)}"
+                    if arch not in translated:
+                        translated.append(arch)
+            i += 2
+            continue
+        if arg.startswith(("-Xnvlink=", "-Xptxas=")):
+            i += 1
+            continue
+        if arg in drop or arg.startswith("-rdc="):
+            i += 1
+            continue
+        if arg.startswith("-Xcompiler="):
+            translated.extend(shlex.split(arg.partition("=")[2].replace(",", " ")))
+            i += 1
+            continue
+        if arg == "-Xcompiler":
+            translated.extend(shlex.split(args[i + 1].replace(",", " ")))
+            i += 2
+            continue
+        if arg.startswith("--compiler-bindir=") or arg.startswith("-ccbin="):
+            i += 1
+            continue
+        if arg in ("--compiler-bindir", "-ccbin"):
+            i += 2
+            continue
+        translated.append(arg)
+        i += 1
+    return {**entry, "arguments": translated, "command": shlex.join(translated)}
+
+
+def clang_compilation_database(
+    build_dir: Path, destination: Path, clang_tidy: str
+) -> None:
+    """Write a temporary Clang-compatible copy of the compilation database."""
+    database = load_compilation_database(build_dir)
+    normalized = []
+    for entry in database:
+        directory = Path(entry.get("directory", build_dir))
+        if not directory.is_absolute():
+            directory = build_dir / directory
+        normalized.append(
+            clang_cuda_command({**entry, "directory": str(directory)}, clang_tidy)
+        )
+    (destination / "compile_commands.json").write_text(json.dumps(normalized))
 
 
 def scan_dependencies(
@@ -471,20 +569,16 @@ def run_source_tidy(
     repo_root: Path,
     build_dir: Path,
 ) -> int:
-    """Run clang-tidy-diff.py for changed .cc files, not CUDA sources."""
-    # clang-tidy-diff.py is restricted to .cc files by the regex below.
-    for source in sorted(sources):
-        if source.suffix == ".cu":
-            log(
-                LogLevel.NOTICE,
-                f"Skipping changed CUDA source in .cc-only clang-tidy-diff run: "
-                f"{source.as_posix()}",
-            )
-    tidy_sources = [source.as_posix() for source in sources if source.suffix == ".cc"]
-    if not tidy_sources:
-        log(LogLevel.NOTICE, "No .cc source files selected for clang-tidy-diff")
-        return 0
+    """Run clang-tidy-diff.py for changed C++ and CUDA source lines."""
     compilation_database = load_compilation_database(build_dir)
+    tidy_sources = [
+        source.as_posix()
+        for source in sorted(sources)
+        if source.suffix in (".cc", ".cu")
+    ]
+    if not tidy_sources:
+        log(LogLevel.NOTICE, "No source files selected for clang-tidy-diff")
+        return 0
     if validate_selected_sources(
         tidy_sources,
         build_dir,
@@ -527,9 +621,12 @@ def run(args: argparse.Namespace) -> int:
     repo_root, build_dir = validate_inputs(args)
     diff = fetch_diff(args.remote, args.base_sha, repo_root)
     headers, sources = changed_paths(diff)
-    if headers:
-        return run_header_tidy(args, headers, sources, repo_root, build_dir)
-    return run_source_tidy(args, diff, sources, repo_root, build_dir)
+    with tempfile.TemporaryDirectory() as temp_dir:
+        clang_db = Path(temp_dir)
+        clang_compilation_database(build_dir, clang_db, command_path(args.clang_tidy))
+        if headers:
+            return run_header_tidy(args, headers, sources, repo_root, clang_db)
+        return run_source_tidy(args, diff, sources, repo_root, clang_db)
 
 
 def main(argv: Sequence[str] | None = None) -> int:

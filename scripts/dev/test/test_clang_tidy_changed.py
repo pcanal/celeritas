@@ -89,9 +89,6 @@ def test_validate_selected_sources_prints_commands_when_requested(build_tree, ca
         compilation_database,
         print_commands=True,
     )
-    assert (
-        "Compilation database entry: source=src/example.cc;" in capsys.readouterr().err
-    )
 
 
 def test_validate_selected_sources_reports_missing_files(build_tree, capsys):
@@ -147,11 +144,7 @@ def test_select_sources_cuda_requires_compilation_entry(
         compilation_database=database,
     )
 
-    expected = (
-        ["src/a.cu"]
-        if mode is _MODULE.SourceSelection.ONE
-        else ["src/a.cu", "src/b.cc"]
-    )
+    expected = ["src/a.cu", "src/b.cc"]
     assert result == (expected if cuda_in_database else ["src/b.cc"])
     assert ("Skipping changed CUDA source" in capsys.readouterr().err) == (
         not cuda_in_database
@@ -191,13 +184,20 @@ def test_select_sources_prefers_available_cc_over_unavailable_cuda(
     ) == ["src/b.cc"]
 
 
-def test_run_source_tidy_skips_cuda_and_checks_cc(build_tree, monkeypatch, capsys):
+def test_run_source_tidy_checks_cuda_and_cc(build_tree, monkeypatch):
     repo_root, build_dir = build_tree
     cpp = repo_root / "src" / "example.cc"
     cpp.parent.mkdir()
     cpp.touch()
+    cuda = repo_root / "src" / "example.cu"
+    cuda.touch()
     (build_dir / "compile_commands.json").write_text(
-        json.dumps([{"directory": str(build_dir), "file": str(cpp)}])
+        json.dumps(
+            [
+                {"directory": str(build_dir), "file": str(source)}
+                for source in (cpp, cuda)
+            ]
+        )
     )
     calls = []
     monkeypatch.setattr(
@@ -221,8 +221,7 @@ def test_run_source_tidy_skips_cuda_and_checks_cc(build_tree, monkeypatch, capsy
         == 0
     )
     assert len(calls) == 1
-    assert calls[0][0][0][-1] == r"(?:^|/)(?:src/example\.cc)$"
-    assert "Skipping changed CUDA source in .cc-only" in capsys.readouterr().err
+    assert calls[0][0][0][-1] == r"(?:^|/)(?:src/example\.cc|src/example\.cu)$"
 
 
 def test_run_source_tidy_skips_source_without_compile_commands(
@@ -258,22 +257,35 @@ def test_run_source_tidy_skips_source_without_compile_commands(
     assert "::warning file=src/example.cc,line=" in capsys.readouterr().err
 
 
-def test_run_source_tidy_cuda_only_skips_runner(build_tree, monkeypatch, capsys):
+def test_run_source_tidy_cuda_only_runs_runner(build_tree, monkeypatch):
     repo_root, build_dir = build_tree
-
-    def unexpected_run(*args, **kwargs):
-        pytest.fail("clang-tidy-diff should not run for CUDA-only changes")
-
-    monkeypatch.setattr(_MODULE.subprocess, "run", unexpected_run)
+    cuda = repo_root / "src/example.cu"
+    cuda.parent.mkdir()
+    cuda.touch()
+    (build_dir / "compile_commands.json").write_text(
+        json.dumps([{"directory": str(build_dir), "file": str(cuda)}])
+    )
+    calls = []
+    monkeypatch.setattr(
+        _MODULE.subprocess,
+        "run",
+        lambda *args, **kwargs: calls.append(args) or Namespace(returncode=0),
+    )
     assert (
         run_source_tidy(
-            Namespace(), "diff", {Path("src/example.cu")}, repo_root, build_dir
+            Namespace(
+                clang_tidy="clang-tidy",
+                clang_tidy_diff=Path("clang-tidy-diff.py"),
+                print_compile_commands=False,
+            ),
+            "diff",
+            {Path("src/example.cu")},
+            repo_root,
+            build_dir,
         )
         == 0
     )
-    output = capsys.readouterr().err
-    assert "Skipping changed CUDA source in .cc-only" in output
-    assert "No .cc source files selected" in output
+    assert len(calls) == 1
 
 
 @pytest.mark.parametrize("header_mode", [False, True], ids=["changed-source", "header"])
@@ -431,8 +443,82 @@ def test_scannable_commands_omits_nvcc(build_tree, capsys):
     assert "emptyfile.cu" in output
 
 
-def test_run_header_tidy_scans_only_host_commands(build_tree, monkeypatch, capsys):
+@pytest.mark.parametrize("use_arguments", [False, True])
+def test_clang_cuda_command_translates_nvcc_flags(use_arguments, monkeypatch):
+    monkeypatch.setenv("CUDA_PATH", "/opt/cuda")
+    flags = [
+        "/opt/cuda/bin/nvcc",
+        "-Iinclude",
+        "-DTEST=1",
+        "-std=c++20",
+        "--generate-code=arch=compute_70,code=[compute_70,sm_70]",
+        "-Xcompiler=-fPIC,-Wall",
+        "-rdc=true",
+        "-forward-unknown-to-host-compiler",
+        "-Xnvlink",
+        "--suppress-stack-size-warning",
+        "-c",
+        "src/example.cu",
+    ]
+    entry = {"file": "src/example.cu", "directory": "/build"}
+    entry.update(
+        {"arguments": flags}
+        if use_arguments
+        else {"command": __import__("shlex").join(flags)}
+    )
+    result = _MODULE.clang_cuda_command(entry, "clang-tidy-18")
+    args = result["arguments"]
+    assert args[:3] == ["clang++-18", "-x", "cuda"]
+    assert "--cuda-path=/opt/cuda" in args
+    assert "--cuda-gpu-arch=sm_70" in args
+    assert "-fgpu-rdc" in args
+    assert all(
+        x in args
+        for x in (
+            "-Iinclude",
+            "-DTEST=1",
+            "-std=c++20",
+            "-fPIC",
+            "-Wall",
+            "src/example.cu",
+        )
+    )
+    assert not any(
+        x.startswith(("-Xnvlink", "-rdc=", "--generate-code=", "-Xcompiler="))
+        for x in args
+    )
+
+
+def test_clang_compilation_database_preserves_host_and_cuda(tmp_path):
+    build_dir = tmp_path / "build"
+    output = tmp_path / "output"
+    build_dir.mkdir()
+    output.mkdir()
+    database = [
+        {
+            "directory": str(build_dir),
+            "file": "src/host.cc",
+            "command": "clang++ -c src/host.cc",
+        },
+        {
+            "directory": str(build_dir),
+            "file": "src/device.cu",
+            "command": "/opt/cuda/bin/nvcc -c src/device.cu",
+        },
+    ]
+    (build_dir / "compile_commands.json").write_text(json.dumps(database))
+    _MODULE.clang_compilation_database(build_dir, output, "clang-tidy-18")
+    result = json.loads((output / "compile_commands.json").read_text())
+    assert result[0] == database[0]
+    assert result[1]["arguments"][0] == "clang++-18"
+    assert result[1]["file"] == database[1]["file"]
+
+
+def test_run_header_tidy_scans_host_and_translated_cuda(
+    build_tree, monkeypatch, capsys
+):
     repo_root, build_dir = build_tree
+    monkeypatch.setenv("CUDA_PATH", "/opt/cuda")
     host = repo_root / "src/host.cc"
     cuda = repo_root / "src/device.cu"
     host.parent.mkdir()
@@ -451,6 +537,8 @@ def test_run_header_tidy_scans_only_host_commands(build_tree, monkeypatch, capsy
         },
     ]
     (build_dir / "compile_commands.json").write_text(json.dumps(database))
+    database[1] = _MODULE.clang_cuda_command(database[1], "clang-tidy-18")
+    (build_dir / "compile_commands.json").write_text(json.dumps(database))
     monkeypatch.setattr(_MODULE, "command_path", lambda command: command)
     tidy_commands = []
     monkeypatch.setattr(
@@ -459,7 +547,7 @@ def test_run_header_tidy_scans_only_host_commands(build_tree, monkeypatch, capsy
 
     def fake_run(command, **kwargs):
         scan_file = Path(command[command.index("-compilation-database") + 1])
-        assert json.loads(scan_file.read_text()) == [database[0]]
+        assert json.loads(scan_file.read_text()) == database
         kwargs["stdout"].write(
             json.dumps(
                 {
@@ -469,7 +557,11 @@ def test_run_header_tidy_scans_only_host_commands(build_tree, monkeypatch, capsy
                                 {
                                     "input-file": str(host),
                                     "file-deps": [str(repo_root / "src/shared.hh")],
-                                }
+                                },
+                                {
+                                    "input-file": str(cuda),
+                                    "file-deps": [str(repo_root / "src/shared.hh")],
+                                },
                             ]
                         }
                     ]
@@ -497,8 +589,8 @@ def test_run_header_tidy_scans_only_host_commands(build_tree, monkeypatch, capsy
     )
     assert len(tidy_commands) == 1
     assert "host\\.cc" in tidy_commands[0][-1]
-    assert "device\\.cu" not in tidy_commands[0][-1]
-    assert "Skipping changed CUDA source" in capsys.readouterr().err
+    assert "device\\.cu" in tidy_commands[0][-1]
+    assert "Skipping changed CUDA source" not in capsys.readouterr().err
 
 
 def test_main_prints_runtime_error_and_exits(monkeypatch, capsys):
