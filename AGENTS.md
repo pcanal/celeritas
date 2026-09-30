@@ -46,6 +46,12 @@ the appropriate tracked documentation.
 
 ### Versioned tool options
 
+When adding structured Spack configuration in CI, inspect the pinned Spack
+version's config-path parser before choosing `spack config add` arguments.
+Colon-containing YAML maps (such as CUDA `externals`) must be supplied with
+`spack config add -f` and validated as YAML; workflow YAML lint alone does
+not catch an invalid Spack config path.
+
 Before adding an option to a CI tool, check its `-h` output for the exact
 version configured by the workflow. Do not assume options from a newer local
 version, such as `clang-tidy-diff.py -only-check-in-db`, are supported.

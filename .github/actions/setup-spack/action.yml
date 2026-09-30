@@ -94,8 +94,14 @@ runs:
 
         if [ -n "$CUDA_VERSION" ]; then
           test -x "$CUDA_PATH/bin/nvcc"
-          spack -e . config add "packages:cuda:buildable:false"
-          spack -e . config add "packages:cuda:externals:[{spec: cuda@${CUDA_VERSION}, prefix: ${CUDA_PATH}}]"
+          spack -e . config add -f /dev/stdin <<EOF
+        packages:
+          cuda:
+            buildable: false
+            externals:
+              - spec: cuda@${CUDA_VERSION}
+                prefix: ${CUDA_PATH}
+        EOF
         fi
         if [ -n "$CUDA_ARCH" ]; then
           spack -e . config add "packages:all:prefer:[cuda_arch=${CUDA_ARCH}]"
