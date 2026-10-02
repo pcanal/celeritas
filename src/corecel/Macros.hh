@@ -22,10 +22,13 @@
  * \def CELER_FUNCTION
  *
  * Decorate a function that works on both host and device, with and without
- * NVCC. The name of this function and its siblings is based on the Kokkos
- * naming scheme.
+ * CUDA (NVCC or Clang) and HIP compilers. The name of this function and its
+ * siblings is based on the Kokkos naming scheme.
+ *
+ * NVCC defines both \c __NVCC__ and \c __CUDACC__ when compiling CUDA
+ * sources, whereas Clang compiling CUDA code defines only \c __CUDACC__ .
  */
-#if defined(__NVCC__) || defined(__HIP__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIP__)
 #    define CELER_FUNCTION __host__ __device__
 #else
 #    define CELER_FUNCTION
@@ -96,7 +99,8 @@
  * \def CELER_CONSTEXPR_FUNCTION
  *
  * Decorate a function that works on both host and device, with and without
- * NVCC, can be evaluated at compile time, and should be forcibly inlined.
+ * CUDA and HIP compilers, can be evaluated at compile time, and should be
+ * forcibly inlined.
  */
 #define CELER_CONSTEXPR_FUNCTION constexpr CELER_FORCEINLINE_FUNCTION
 

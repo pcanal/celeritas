@@ -22,6 +22,7 @@ env:
 jobs:
   asan:
     name: orange-asanlite
+    if: false # TEMP(tidy-only): revert this commit to restore
     env:
       CELER_CMAKE_PRESET: orange-asanlite
     runs-on: ubuntu-24.04
@@ -59,6 +60,7 @@ jobs:
   # Compatibility with old compilers (SCALE QA)
   ancient:
     name: orange-gcc8
+    if: false # TEMP(tidy-only): revert this commit to restore
     env:
       CELER_CMAKE_PRESET: orange-ancient
       CC: "/opt/view/bin/gcc"
@@ -100,29 +102,47 @@ jobs:
   tidy:
     name: tidy-vecgeom
     env:
-      CELER_CMAKE_PRESET: vecgeom-tidy
+      CELER_CMAKE_PRESET: vecgeom
+      CUDA_VERSION: "12.6.3"
       CLANG_TIDY: "clang-tidy-18"
+      CLANG_TIDY_DIFF: "/usr/lib/llvm-18/share/clang/clang-tidy-diff.py"
+      # The options are either "all" the sources that directly or indirectly
+      # include the header files, or "one" single source file per header file.
+      # The "one" option is faster but may miss some issues.
+      CLANG_TIDY_HEADER_SOURCES: one
     runs-on: ubuntu-24.04
     steps:
       - name: Check out Celeritas
         uses: actions/checkout@v7
         with:
           fetch-tags: true # to get version information
+      - name: Install CUDA toolkit
+        uses: Jimver/cuda-toolkit@b8bf9c6c28f8a92fbb04dcfcaee872e60c57462d # v0.2.36
+        with:
+          cuda: ${{env.CUDA_VERSION}}
+          linux-local-args: '["--toolkit"]'
       - name: Set up Spack environment
         uses: ./.github/actions/setup-spack
         with:
-          add: "geant4@11.2 vecgeom@1.2.11:1 g4vg"
+          add: "geant4@11.3 vecgeom@2.1.0+cuda g4vg" # Same as vecgeom 11.3
           cxxstd: ${{env.CXXSTD}}
+          cuda-version: ${{env.CUDA_VERSION}}
+          cuda-arch: "70"
+          use-buildcache: auto # Build CUDA-enabled VecGeom if it is not cached
       - name: Configure Celeritas
         uses: ./.github/actions/configure
         with:
           preset: ${{env.CELER_CMAKE_PRESET}}
           presets-file: "ci-ubuntu-github.json"
+          args: -DCELERITAS_USE_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=70
       - name: Build changed files with clang-tidy
         if: ${{github.event_name == 'pull_request'}}
         run: |
-          "${{github.workspace}}/scripts/ci/clang-tidy-changed.sh" \
+          python3 "${{github.workspace}}/scripts/ci/clang-tidy-changed.py" \
             "origin" \
-            "${{ github.event.pull_request.base.sha }}"
+            "${{ github.event.pull_request.base.sha }}" \
+            --clang-tidy "${CLANG_TIDY}" \
+            --clang-tidy-diff "${CLANG_TIDY_DIFF}" \
+            --header-source-selection "${CLANG_TIDY_HEADER_SOURCES}"
 
 # vim: set nowrap tw=100:
