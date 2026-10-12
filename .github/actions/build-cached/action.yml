@@ -61,6 +61,12 @@ runs:
         path: ${{ env.CCACHE_DIR }}
         key: ccache-${{ inputs.name }}-${{ github.run_id }}
         restore-keys: ccache-${{ inputs.name }}
+        # NOTE: outputs.cache-hit is a *string* that has values:
+        # - '': no hit at all
+        # - 'false': hit but only using "restore-keys" (i.e. indirect match,
+        #   maybe  from an older build or from develop)
+        # - 'true': hit using the exact name: multiple jobs sharing cache within
+        #   the same run (or re-run)
 
     - name: Zero ccache stats
       shell: bash
@@ -71,10 +77,14 @@ runs:
       id: build
       shell: bash
       run: cmake --build --preset=${{ inputs.preset }} ${{ inputs.targets && '--target' || '' }} ${{ inputs.targets }}
-    - name: Show ccache stats
+    - name: Show cache result
       if: ${{ !failure() && steps.build.outcome != 'skipped' }}
       shell: bash
-      run: ccache -s
+      env:
+        CACHE_HIT_OUTPUT: ${{ steps.restore.outputs.cache-hit }}
+      run: |
+        printf "Cache restore result: %s\n" "$CACHE_HIT_OUTPUT"
+        ccache -s
 
     - name: Save ccache
       # Allow interrupted builds to save (use !failure not !cancelled)
@@ -84,7 +94,7 @@ runs:
       if: >-
         ${{ !failure()
            && steps.build.outcome != 'skipped'
-           && fromJSON(steps.restore.outputs.cache-hit)
+           && steps.restore.outputs.cache-hit != 'true'
          }}
       uses: actions/cache/save@v6
       with:
