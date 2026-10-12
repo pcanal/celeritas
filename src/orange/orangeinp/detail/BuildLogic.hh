@@ -77,10 +77,12 @@ class BaseLogicBuilder
                   "unsupported: add enum logic conversion for different-sized "
                   "face and surface ints");
 
-  public:
+  private:
     // Construct with optional mapping pointer
     BaseLogicBuilder(
         CsgTree const& tree, VecLogic& logic, VecSurface const* vs = nullptr);
+
+  public:
     //! Build from a node ID
     void operator()(NodeId const& n);
 
@@ -104,6 +106,7 @@ class BaseLogicBuilder
     VecLogic& logic_;
     ContainerVisitor<CsgTree const&, NodeId> visit_node_;
     VecSurface const* mapping_{nullptr};
+    friend VisitorImpl;
 };
 
 //---------------------------------------------------------------------------//
@@ -118,11 +121,18 @@ class BaseLogicBuilder
 class PostfixLogicBuilder : public BaseLogicBuilder<PostfixLogicBuilder>
 {
   public:
-    using BaseLogicBuilder::BaseLogicBuilder;
+    using Base = BaseLogicBuilder<PostfixLogicBuilder>;
+
+    PostfixLogicBuilder(CsgTree const& tree,
+                        VecLogic& logic,
+                        VecSurface const* mapping = nullptr)
+        : Base{tree, logic, mapping}
+    {
+    }
 
     //!@{
     //! \name Visit a node directly
-    using BaseLogicBuilder::operator();
+    using Base::operator();
 
     // Visit a negated node and append 'not'.
     void operator()(Negated const& n);
@@ -144,11 +154,18 @@ class PostfixLogicBuilder : public BaseLogicBuilder<PostfixLogicBuilder>
 class InfixLogicBuilder : public BaseLogicBuilder<InfixLogicBuilder>
 {
   public:
-    using BaseLogicBuilder::BaseLogicBuilder;
+    using Base = BaseLogicBuilder<InfixLogicBuilder>;
+
+    InfixLogicBuilder(CsgTree const& tree,
+                      VecLogic& logic,
+                      VecSurface const* mapping = nullptr)
+        : Base{tree, logic, mapping}
+    {
+    }
 
     //!@{
     //! \name Visit a node directly
-    using BaseLogicBuilder::operator();
+    using Base::operator();
 
     // Append 'not' and visit a negated node.
     void operator()(Negated const& n);
